@@ -6,7 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
+  useSyncExternalStore,
 } from "react";
 import { WorkoutItem } from "@/types/book";
 import { toast } from "react-toastify";
@@ -24,44 +24,67 @@ interface WorkoutContextType {
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
+// Helpers to read from localStorage without cascading effect renders
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getStoredPlan(): WorkoutItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const item = localStorage.getItem("fitlog_today_plan");
+    return item ? JSON.parse(item) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getStoredSaved(): WorkoutItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const item = localStorage.getItem("fitlog_saved_list");
+    return item ? JSON.parse(item) : [];
+  } catch {
+    return [];
+  }
+}
+
 export const WorkoutProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
+  // Sync safely between server and client without calling setState in an effect
+  const initialPlan = useSyncExternalStore(subscribe, getStoredPlan, () => []);
+  const initialSaved = useSyncExternalStore(subscribe, getStoredSaved, () => []);
+
   const [todayPlan, setTodayPlan] = useState<WorkoutItem[]>([]);
   const [savedList, setSavedList] = useState<WorkoutItem[]>([]);
-  const isHydrated = useRef(false);
+  const [isClient, setIsClient] = useState(false);
 
-  const getItemId = (item: WorkoutItem): string =>
-    String(item.id || item._id || item.bookId || "");
-
-  // 1. Hydrate state from localStorage safely on client mount
+  // Initialize once when the external store snapshot resolves on client
   useEffect(() => {
-    try {
-      const storedPlan = localStorage.getItem("fitlog_today_plan");
-      const storedSaved = localStorage.getItem("fitlog_saved_list");
-
-      if (storedPlan) setTodayPlan(JSON.parse(storedPlan));
-      if (storedSaved) setSavedList(JSON.parse(storedSaved));
-    } catch (e) {
-      console.error("Failed to read localStorage:", e);
-    } finally {
-      isHydrated.current = true;
+    if (!isClient) {
+      setTodayPlan(initialPlan);
+      setSavedList(initialSaved);
+      setIsClient(true);
     }
-  }, []);
+  }, [initialPlan, initialSaved, isClient]);
 
-  // 2. Sync to localStorage ONLY after client has hydrated
+  // Persist updates to localStorage
   useEffect(() => {
-    if (!isHydrated.current) return;
-
+    if (!isClient) return;
     try {
       localStorage.setItem("fitlog_today_plan", JSON.stringify(todayPlan));
       localStorage.setItem("fitlog_saved_list", JSON.stringify(savedList));
     } catch (e) {
       console.error("Failed to write to localStorage:", e);
     }
-  }, [todayPlan, savedList]);
+  }, [todayPlan, savedList, isClient]);
+
+  const getItemId = (item: WorkoutItem): string =>
+    String(item.id || item._id || item.bookId || "");
 
   const addToTodayPlan = useCallback(
     (item: WorkoutItem): boolean => {
