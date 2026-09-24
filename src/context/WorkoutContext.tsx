@@ -29,6 +29,9 @@ let cachedPlanParsed: WorkoutItem[] = [];
 let cachedSavedRaw: string | null = null;
 let cachedSavedParsed: WorkoutItem[] = [];
 
+// Single static cached empty array for SSR / empty fallbacks
+const EMPTY_LIST: WorkoutItem[] = [];
+
 // Custom event to notify subscribers of local storage updates across components
 const STORAGE_EVENT = "fitlog_storage_update";
 
@@ -49,41 +52,42 @@ function subscribe(callback: () => void) {
 }
 
 function getTodayPlanSnapshot(): WorkoutItem[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_LIST;
   try {
     const raw = localStorage.getItem("fitlog_today_plan");
     if (raw !== cachedPlanRaw) {
       cachedPlanRaw = raw;
-      cachedPlanParsed = raw ? JSON.parse(raw) : [];
+      cachedPlanParsed = raw ? JSON.parse(raw) : EMPTY_LIST;
     }
     return cachedPlanParsed;
   } catch {
-    return [];
+    return EMPTY_LIST;
   }
 }
 
 function getSavedListSnapshot(): WorkoutItem[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_LIST;
   try {
     const raw = localStorage.getItem("fitlog_saved_list");
     if (raw !== cachedSavedRaw) {
       cachedSavedRaw = raw;
-      cachedSavedParsed = raw ? JSON.parse(raw) : [];
+      cachedSavedParsed = raw ? JSON.parse(raw) : EMPTY_LIST;
     }
     return cachedSavedParsed;
   } catch {
-    return [];
+    return EMPTY_LIST;
   }
 }
 
-const getServerSnapshot = () => [];
+// Cached server snapshot returning the exact same object reference
+const getServerSnapshot = (): WorkoutItem[] => EMPTY_LIST;
 
 export const WorkoutProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  // Read snapshots directly from localStorage without any useEffect or setState calls
+  // Read snapshots directly using cached static references
   const todayPlan = useSyncExternalStore(
     subscribe,
     getTodayPlanSnapshot,
