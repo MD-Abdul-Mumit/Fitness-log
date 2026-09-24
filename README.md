@@ -107,34 +107,37 @@ GET [https://api.abcz.workers.dev/api/fitlog](https://api.abcz.workers.dev/api/f
 # Fetch specific workout details
 GET [https://api.abcz.workers.dev/api/fitlog/:id](https://api.abcz.workers.dev/api/fitlog/:id)
 
----
+## 📁 Project Structure
 
+```text
 fit-log/
-├── public/
-│   └── workouts.json              # Local fallback dataset for offline resilience
-├── src/
-│   ├── app/
-│   │   ├── book/[bookId]/
-│   │   │   └── page.tsx           # Two-column lift detail page
-│   │   ├── my-plan/
-│   │   │   └── page.tsx           # Dashboard, tabs, live metrics, and sorting
-│   │   ├── globals.css            # Dark mode styles & smooth scrolling
-│   │   ├── layout.tsx             # Root layout with Provider & Toast container
-│   │   ├── not-found.tsx          # Custom 404 error page
-│   │   └── page.tsx               # Hero banner and 3x4 exercise library
-│   ├── assets/
-│   │   ├── logo.png               # Official emblem
-│   │   └── banner.png             # Hero visual
-│   ├── components/
-│   │   └── shared/
-│   │       ├── BookCard.tsx       # Standardized exercise card
-│   │       ├── Footer.tsx         # Dark brand footer
-│   │       └── Navbar.tsx         # Responsive header with plan & saved counter badges
-│   ├── context/
-│   │   └── WorkoutContext.tsx     # Synchronized store with 5-lift cap guard
-│   └── types/
-│       └── book.ts                # TypeScript interfaces and sorting types
-├── .env.example                   # Public environment variable template
-├── next.config.ts                 # External image proxy configuration
-├── tailwind.config.js             # Color palette & DaisyUI theme settings
-└── tsconfig.json                  # Strict TypeScript compiler options
++-- public/
+|   \-- workouts.json
++-- src/
+|   +-- app/
+|   |   +-- book/
+|   |   |   \-- [bookId]/
+|   |   |       \-- page.tsx
+|   |   +-- my-plan/
+|   |   |   \-- page.tsx
+|   |   +-- globals.css
+|   |   +-- layout.tsx
+|   |   +-- not-found.tsx
+|   |   \-- page.tsx
+|   +-- assets/
+|   |   +-- banner.png
+|   |   \-- logo.png
+|   +-- components/
+|   |   \-- shared/
+|   |       +-- BookCard.tsx
+|   |       +-- Footer.tsx
+|   |       \-- Navbar.tsx
+|   +-- context/
+|   |   \-- WorkoutContext.tsx
+|   \-- types/
+|       \-- book.ts
++-- .env.example
++-- next.config.ts
++-- package.json
++-- tailwind.config.js
+\-- tsconfig.json
