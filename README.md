@@ -100,7 +100,7 @@ A high-performance, dark-mode gym companion and workout planning web application
 
 The project connects to the following REST endpoints:
 
-http
+```http
 # Fetch complete workout catalog
 GET [https://api.abcz.workers.dev/api/fitlog](https://api.abcz.workers.dev/api/fitlog)
 
