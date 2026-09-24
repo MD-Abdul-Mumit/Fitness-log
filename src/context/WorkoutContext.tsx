@@ -3,8 +3,6 @@
 import React, {
   createContext,
   useContext,
-  useState,
-  useEffect,
   useCallback,
   useSyncExternalStore,
 } from "react";
@@ -24,131 +22,167 @@ interface WorkoutContextType {
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
 
-// Helpers to read from localStorage without cascading effect renders
+// In-memory cache to maintain referential equality and avoid re-render loops
+let cachedPlanRaw: string | null = null;
+let cachedPlanParsed: WorkoutItem[] = [];
+
+let cachedSavedRaw: string | null = null;
+let cachedSavedParsed: WorkoutItem[] = [];
+
+// Custom event to notify subscribers of local storage updates across components
+const STORAGE_EVENT = "fitlog_storage_update";
+
+function notifyStorageChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(STORAGE_EVENT));
+  }
+}
+
 function subscribe(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(STORAGE_EVENT, callback);
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(STORAGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
 }
 
-function getStoredPlan(): WorkoutItem[] {
+function getTodayPlanSnapshot(): WorkoutItem[] {
   if (typeof window === "undefined") return [];
   try {
-    const item = localStorage.getItem("fitlog_today_plan");
-    return item ? JSON.parse(item) : [];
+    const raw = localStorage.getItem("fitlog_today_plan");
+    if (raw !== cachedPlanRaw) {
+      cachedPlanRaw = raw;
+      cachedPlanParsed = raw ? JSON.parse(raw) : [];
+    }
+    return cachedPlanParsed;
   } catch {
     return [];
   }
 }
 
-function getStoredSaved(): WorkoutItem[] {
+function getSavedListSnapshot(): WorkoutItem[] {
   if (typeof window === "undefined") return [];
   try {
-    const item = localStorage.getItem("fitlog_saved_list");
-    return item ? JSON.parse(item) : [];
+    const raw = localStorage.getItem("fitlog_saved_list");
+    if (raw !== cachedSavedRaw) {
+      cachedSavedRaw = raw;
+      cachedSavedParsed = raw ? JSON.parse(raw) : [];
+    }
+    return cachedSavedParsed;
   } catch {
     return [];
   }
 }
+
+const getServerSnapshot = () => [];
 
 export const WorkoutProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  // Sync safely between server and client without calling setState in an effect
-  const initialPlan = useSyncExternalStore(subscribe, getStoredPlan, () => []);
-  const initialSaved = useSyncExternalStore(subscribe, getStoredSaved, () => []);
-
-  const [todayPlan, setTodayPlan] = useState<WorkoutItem[]>([]);
-  const [savedList, setSavedList] = useState<WorkoutItem[]>([]);
-  const [isClient, setIsClient] = useState(false);
-
-  // Initialize once when the external store snapshot resolves on client
-  useEffect(() => {
-    if (!isClient) {
-      setTodayPlan(initialPlan);
-      setSavedList(initialSaved);
-      setIsClient(true);
-    }
-  }, [initialPlan, initialSaved, isClient]);
-
-  // Persist updates to localStorage
-  useEffect(() => {
-    if (!isClient) return;
-    try {
-      localStorage.setItem("fitlog_today_plan", JSON.stringify(todayPlan));
-      localStorage.setItem("fitlog_saved_list", JSON.stringify(savedList));
-    } catch (e) {
-      console.error("Failed to write to localStorage:", e);
-    }
-  }, [todayPlan, savedList, isClient]);
+  // Read snapshots directly from localStorage without any useEffect or setState calls
+  const todayPlan = useSyncExternalStore(
+    subscribe,
+    getTodayPlanSnapshot,
+    getServerSnapshot,
+  );
+  const savedList = useSyncExternalStore(
+    subscribe,
+    getSavedListSnapshot,
+    getServerSnapshot,
+  );
 
   const getItemId = (item: WorkoutItem): string =>
     String(item.id || item._id || item.bookId || "");
 
-  const addToTodayPlan = useCallback(
-    (item: WorkoutItem): boolean => {
-      const id = getItemId(item);
+  const addToTodayPlan = useCallback((item: WorkoutItem): boolean => {
+    const current = getTodayPlanSnapshot();
+    const id = getItemId(item);
 
-      if (todayPlan.some((p) => getItemId(p) === id)) {
-        setTimeout(() => toast.warning("This workout is already in Today's Plan!"), 0);
-        return false;
-      }
+    if (current.some((p) => getItemId(p) === id)) {
+      setTimeout(
+        () => toast.warning("This workout is already in Today's Plan!"),
+        0,
+      );
+      return false;
+    }
 
-      if (todayPlan.length >= 5) {
-        setTimeout(
-          () => toast.error("Cap of five lifts reached for today! Finish them first."),
-          0
-        );
-        return false;
-      }
+    if (current.length >= 5) {
+      setTimeout(
+        () =>
+          toast.error(
+            "Cap of five lifts reached for today! Finish them first.",
+          ),
+        0,
+      );
+      return false;
+    }
 
-      setTodayPlan((prev) => [...prev, { ...item, completed: false }]);
-      setTimeout(() => toast.success("Added to today's plan!"), 0);
-      return true;
-    },
-    [todayPlan]
-  );
+    const updated = [...current, { ...item, completed: false }];
+    localStorage.setItem("fitlog_today_plan", JSON.stringify(updated));
+    notifyStorageChange();
 
-  const addToSavedList = useCallback(
-    (item: WorkoutItem): boolean => {
-      const id = getItemId(item);
+    setTimeout(() => toast.success("Added to today's plan!"), 0);
+    return true;
+  }, []);
 
-      if (savedList.some((s) => getItemId(s) === id)) {
-        setTimeout(() => toast.warning("Workout is already saved!"), 0);
-        return false;
-      }
+  const addToSavedList = useCallback((item: WorkoutItem): boolean => {
+    const current = getSavedListSnapshot();
+    const id = getItemId(item);
 
-      setSavedList((prev) => [...prev, item]);
-      setTimeout(() => toast.info("Saved for later!"), 0);
-      return true;
-    },
-    [savedList]
-  );
+    if (current.some((s) => getItemId(s) === id)) {
+      setTimeout(() => toast.warning("Workout is already saved!"), 0);
+      return false;
+    }
+
+    const updated = [...current, item];
+    localStorage.setItem("fitlog_saved_list", JSON.stringify(updated));
+    notifyStorageChange();
+
+    setTimeout(() => toast.info("Saved for later!"), 0);
+    return true;
+  }, []);
 
   const removeFromTodayPlan = useCallback((id: string | number) => {
-    setTodayPlan((prev) => prev.filter((p) => getItemId(p) !== String(id)));
+    const current = getTodayPlanSnapshot();
+    const updated = current.filter((p) => getItemId(p) !== String(id));
+    localStorage.setItem("fitlog_today_plan", JSON.stringify(updated));
+    notifyStorageChange();
     setTimeout(() => toast.info("Removed from today's plan"), 0);
   }, []);
 
   const removeFromSavedList = useCallback((id: string | number) => {
-    setSavedList((prev) => prev.filter((s) => getItemId(s) !== String(id)));
+    const current = getSavedListSnapshot();
+    const updated = current.filter((s) => getItemId(s) !== String(id));
+    localStorage.setItem("fitlog_saved_list", JSON.stringify(updated));
+    notifyStorageChange();
     setTimeout(() => toast.info("Removed from saved list"), 0);
   }, []);
 
   const markAsDone = useCallback((id: string | number) => {
-    setTodayPlan((prev) =>
-      prev.map((item) => {
-        if (getItemId(item) === String(id)) {
-          const next = !item.completed;
-          setTimeout(() => {
-            if (next) toast.success("Workout marked as done! Strong work! 🔥");
-          }, 0);
-          return { ...item, completed: next };
-        }
-        return item;
-      })
-    );
+    const current = getTodayPlanSnapshot();
+    let isCompleted = false;
+
+    const updated = current.map((item) => {
+      if (getItemId(item) === String(id)) {
+        const next = !item.completed;
+        isCompleted = next;
+        return { ...item, completed: next };
+      }
+      return item;
+    });
+
+    localStorage.setItem("fitlog_today_plan", JSON.stringify(updated));
+    notifyStorageChange();
+
+    setTimeout(() => {
+      if (isCompleted) {
+        toast.success("Workout marked as done! Strong work! 🔥");
+      }
+    }, 0);
   }, []);
 
   return (
