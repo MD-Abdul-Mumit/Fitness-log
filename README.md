@@ -109,35 +109,40 @@ GET [https://api.abcz.workers.dev/api/fitlog/:id](https://api.abcz.workers.dev/a
 
 ## 📁 Project Structure
 
-```text
+```bash
 fit-log/
-+-- public/
-|   \-- workouts.json
-+-- src/
-|   +-- app/
-|   |   +-- book/
-|   |   |   \-- [bookId]/
-|   |   |       \-- page.tsx
-|   |   +-- my-plan/
-|   |   |   \-- page.tsx
-|   |   +-- globals.css
-|   |   +-- layout.tsx
-|   |   +-- not-found.tsx
-|   |   \-- page.tsx
-|   +-- assets/
-|   |   +-- banner.png
-|   |   \-- logo.png
-|   +-- components/
-|   |   \-- shared/
-|   |       +-- BookCard.tsx
-|   |       +-- Footer.tsx
-|   |       \-- Navbar.tsx
-|   +-- context/
-|   |   \-- WorkoutContext.tsx
-|   \-- types/
-|       \-- book.ts
-+-- .env.example
-+-- next.config.ts
-+-- package.json
-+-- tailwind.config.js
-\-- tsconfig.json
+├── public/
+│   └── workouts.json
+├── src/
+│   ├── app/
+│   │   ├── book/
+│   │   │   └── [bookId]/
+│   │   │       └── page.tsx
+│   │   ├── my-plan/
+│   │   │   └── page.tsx
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── not-found.tsx
+│   │   └── page.tsx
+│   ├── assets/
+│   │   ├── banner.png
+│   │   └── logo.png
+│   ├── components/
+│   │   └── shared/
+│   │       ├── BookCard.tsx
+│   │       ├── Footer.tsx
+│   │       └── Navbar.tsx
+│   ├── context/
+│   │   └── WorkoutContext.tsx
+│   └── types/
+│       └── book.ts
+├── .env.example
+├── .gitignore
+├── eslint.config.mjs
+├── next.config.ts
+├── package.json
+├── postcss.config.mjs
+├── README.md
+├── tailwind.config.js
+└── tsconfig.json
