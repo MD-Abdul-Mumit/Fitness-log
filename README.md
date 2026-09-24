@@ -109,12 +109,9 @@ GET [https://api.abcz.workers.dev/api/fitlog/:id](https://api.abcz.workers.dev/a
 
 ---
 
-## 📁 Project Structure
-
-```text
 fit-log/
 ├── public/
-│   └── workouts.json              # Local fallback dataset
+│   └── workouts.json              # Local fallback dataset for offline resilience
 ├── src/
 │   ├── app/
 │   │   ├── book/[bookId]/
@@ -141,4 +138,3 @@ fit-log/
 ├── next.config.ts                 # External image proxy configuration
 ├── tailwind.config.js             # Color palette & DaisyUI theme settings
 └── tsconfig.json                  # Strict TypeScript compiler options
-```
