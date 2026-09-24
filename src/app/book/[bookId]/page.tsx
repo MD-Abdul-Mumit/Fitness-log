@@ -20,13 +20,13 @@ export default function WorkoutDetailPage({
     async function loadData() {
       try {
         const res = await fetch(
-          `https://api.abcz.workers.dev/api/fitlog/${resolved.bookId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/fitlog/${resolved.bookId}`,
         );
         if (!res.ok) throw new Error("Failed");
         const json = await res.json();
         setWorkout(json.data || json);
       } catch {
-        const allRes = await fetch("https://api.abcz.workers.dev/api/fitlog");
+        const allRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fitlog`);
         const list = await allRes.json();
         const dataArr: WorkoutItem[] = Array.isArray(list)
           ? list
